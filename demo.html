@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>記憶の深層曼荼羅 — デモ版（ブラウザ1ファイル）</title>
+  <meta name="description" content="AI×曼荼羅×WebXR：ブラウザだけで動くデモ版（単一HTML）" />
+  <!-- A-Frame（WebXR/WebGL）CDN読込：オンライン時に動作します -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <style>
+    :root {
+      --bg: rgba(7,10,20,0.6);
+      --panel: rgba(18,22,40,0.92);
+      --text: #e5e7eb; --muted: #9ca3af; --accent: #fbbf24; --border: #334155;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; height:100%; color: var(--text); font-family: system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif; }
+    #hud { position: fixed; inset: 0; pointer-events: none; }
+    #top-right { position: absolute; right: 12px; top: 12px; display: flex; gap: 8px; pointer-events: auto; }
+    #top-right button { padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; box-shadow: var(--shadow); backdrop-filter: blur(6px); }
+    #top-right button:hover { background: rgba(30,41,59,0.7); }
+    .panel, .intro { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(680px,92vw); background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px 18px 14px; box-shadow: var(--shadow); pointer-events: auto; }
+    .panel.hidden, .intro.hidden { display: none; }
+    .panel-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .panel-title { font-weight:700; font-size:18px; }
+    .panel-body { font-size:15px; line-height:1.7; color:#e7e8ee; }
+    .panel-body .meta { color: var(--muted); font-size:13px; margin-bottom:8px; }
+    .panel-actions { margin-top:10px; display:flex; gap:8px; }
+    .panel-actions button { padding: 8px 10px; border-radius:10px; border:1px solid var(--border); background:#111827; color:var(--text); cursor:pointer; }
+    .panel-actions button:hover { background:#0b1220; }
+    .panel-footnote { margin-top:8px; color:var(--muted); font-size:12px; }
+    #btnClose, #btnCloseHelp { border:0; background:transparent; color:var(--muted); font-size:16px; cursor:pointer; }
+    #btnClose:hover, #btnCloseHelp:hover { color:var(--text); }
+    .intro h1 { margin:0 0 8px; font-size:28px; }
+    .intro p { margin:0 0 8px; color:#e7e8ee; }
+    .intro ul { margin:0 0 10px 18px; color:#cbd5e1; }
+    .intro .disclaimer { color:#9ca3af; font-size:12px; }
+    #btnStart { margin-top:6px; padding:10px 14px; border-radius:12px; border:1px solid var(--border); background:#0b1220; color:var(--text); cursor:pointer; box-shadow:var(--shadow); }
+    #btnStart:hover { background:#0f172a; }
+    body.calm #hud #top-right #btnCalm { outline:2px solid var(--accent); text-shadow:0 0 10px rgba(251,191,36,0.6); }
+  </style>
+</head>
+<body>
+  <!-- UI Overlay -->
+  <div id="hud">
+    <div id="top-right">
+      <button id="btnCalm" title="落ち着く（Calm）">🫧 Calm</button>
+      <button id="btnHelp" title="ヘルプ">?</button>
+    </div>
+    <div id="panel" class="panel hidden" role="dialog" aria-modal="true">
+      <div class="panel-header">
+        <div class="panel-title" id="panelTitle">記憶</div>
+        <button id="btnClose" aria-label="閉じる">✕</button>
+      </div>
+      <div id="panelBody" class="panel-body"></div>
+      <div class="panel-actions">
+        <button id="btnSpeak">🔊 聴く</button>
+        <button id="btnStopSpeak">⏹ 停止</button>
+      </div>
+      <div class="panel-footnote">
+        ※ これはアート体験であり医療行為ではありません。AI生成の物語はフィクションです。
+      </div>
+    </div>
+
+    <div id="intro" class="intro">
+      <h1>記憶の深層曼荼羅 — デモ</h1>
+      <p>記憶断片を曼荼羅としてめぐる、ブラウザ1ファイルのデモ版です。</p>
+      <ul>
+        <li>W/A/S/D で移動、マウスドラッグで視点</li>
+        <li>光る球体をクリックで物語を開く（音声読み上げ対応）</li>
+        <li>右上の <b>🫧 Calm</b> で穏やかモード</li>
+      </ul>
+      <p class="disclaimer">※ 医療/心理療法ではありません。AI生成の内容はフィクションです。</p>
+      <button id="btnStart">はじめる</button>
+    </div>
+
+    <div id="help" class="panel hidden">
+      <div class="panel-header">
+        <div class="panel-title">ヘルプ</div>
+        <button id="btnCloseHelp" aria-label="閉じる">✕</button>
+      </div>
+      <div class="panel-body">
+        <p>色＝感情トーン、半径＝重要度、高さ＝時系列の目安です。</p>
+        <ul>
+          <li>青〜灰＝低/中性、黄〜橙＝高ポジ</li>
+          <li>中心に近いほど重要、低いほど過去/高いほど最近</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D Scene -->
+  <a-scene background="color: #0b1020" renderer="antialias: true">
+    <a-entity id="rig" position="0 0 8">
+      <a-entity id="camera" camera look-controls wasd-controls position="0 1.6 0"></a-entity>
+    </a-entity>
+
+    <a-entity light="type: ambient; color: #BBB"></a-entity>
+    <a-entity light="type: point; intensity: 1.2; distance: 30" position="3 5 6"></a-entity>
+
+    <a-entity geometry="primitive: sphere; radius: 60" material="color: #0b1020; side: back; metalness: 0.1; roughness: 1"></a-entity>
+
+    <a-entity id="selfCore"
+              geometry="primitive: sphere; radius: 0.6"
+              material="color: #ffffff; opacity: 0.95; metalness: 0.0; roughness: 0.2; emissive: #fff9cc; emissiveIntensity: 0.25"
+              position="0 0 0"
+              animation__pulse="property: scale; dir: alternate; from: 1 1 1; to: 1.06 1.06 1.06; dur: 3000; loop: true">
+    </a-entity>
+
+    <a-entity id="mandala" position="0 0 0"
+              animation__spin="property: rotation; to: 0 360 0; loop: true; dur: 60000; easing: linear">
+    </a-entity>
+
+    <a-ring position="0 0 0" rotation="-90 0 0" radius-inner="1.5" radius-outer="1.52"
+            material="color: #334155; metalness: 0.1; roughness: 0.7"></a-ring>
+  </a-scene>
+
+  <script>
+  // ===== デモ用データ（埋め込み・編集可） =====
+  const DEMO_MEMORIES = [
+    { id:"grad", title:"卒業式の朝", date:"2012-03-15", theme:"growth", sentiment:0.8, importance:0.9,
+      narrative:"壇上に立ったとき、手は震えていたのに、不思議と心は静かだった。名前を呼ばれ、光の粒が舞い上がるように拍手が広がった。あの日の空は青すぎるほど青く、胸の奥で何かがひと区切りついた。" },
+    { id:"argue", title:"親友との口論", date:"2014-10-02", theme:"relationships", sentiment:-0.4, importance:0.6,
+      narrative:"言い返すたび、言葉が棘になって相手だけでなく自分の内側も刺していた。帰り道、街灯の下に落ちた影が二つ分、間を空けて伸びていたことを覚えている。あの沈黙の長さが、いちばん痛かった。" },
+    { id:"birth", title:"子の誕生", date:"2019-06-21", theme:"family", sentiment:1.0, importance:1.0,
+      narrative:"小さな泣き声が世界の大きさを変えた。初めてのぬくもりは驚くほど軽く、それでいて圧倒的だった。時間が輪になってここに集まってくるような、何度でも思い出したくなる瞬間。" },
+    { id:"grandma", title:"祖母を見送った日", date:"2017-01-12", theme:"loss", sentiment:-0.8, importance:0.85,
+      narrative:"冬の光はやわらかく、白い息はすぐに空へ溶けた。最後の挨拶は言葉にならず、手の中の温度だけを覚えている。帰り道、雪の上に足跡が続いて、ふと、これもまた物語の一部だと思った。" },
+    { id:"move", title:"雨の引っ越し", date:"2015-04-10", theme:"career", sentiment:-0.2, importance:0.5,
+      narrative:"段ボールに詰めた生活の欠片が、雨粒で少し滲んだ。知らない街の匂いは心細いのに、信号が変わるたび少しだけ前に進める気がした。" },
+    { id:"hike", title:"ひとり山歩き", date:"2018-09-30", theme:"nature", sentiment:0.5, importance:0.4,
+      narrative:"木々の間を抜ける風が、身体の輪郭をやさしくなぞる。遠くで鳥が鳴き、靴底の土の音が心拍と重なる。頂に着いたとき、静けさが内側から広がった。" },
+    { id:"wedding", title:"結婚式の日", date:"2016-05-29", theme:"relationships", sentiment:0.9, importance:0.95,
+      narrative:"誓いの言葉は短く、でも確かだった。指輪が指に触れた瞬間、光が円を描くように感じた。笑い声と花の香りが、午後の空気いっぱいに満ちていた。" },
+    { id:"firstjob", title:"初出社の朝", date:"2013-04-01", theme:"career", sentiment:0.2, importance:0.7,
+      narrative:"ドアを開くまでの数歩がいちばん長かった。名札の重み、コーヒーの湯気、まだ馴染まない靴。見慣れない景色なのに、不思議といつか見た夢に似ていた。" }
+  ];
+
+  // ===== ヘルパ =====
+  const $ = (s)=>document.querySelector(s);
+  const clamp = (v,a,b)=>Math.min(b,Math.max(a,v));
+  const lerp = (a,b,t)=>a+(b-a)*t;
+  const hexToRgb = (h)=>{const m=h.replace('#','');const i=parseInt(m.length===3?m.split('').map(x=>x+x).join(''):m,16);return{r:(i>>16)&255,g:(i>>8)&255,b:(i)&255}};
+  const rgbToHex = (r,g,b)=>'#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const mix = (c1,c2,t)=>{const a=hexToRgb(c1),b=hexToRgb(c2);return rgbToHex(Math.round(lerp(a.r,b.r,t)),Math.round(lerp(a.g,b.g,t)),Math.round(lerp(a.b,b.b,t)));}
+  function colorForSentiment(s){ s=clamp(s,-1,1); if(s<0){return mix('#3b82f6','#9ca3af',s+1);} return mix('#9ca3af','#f59e0b',s); }
+  function radiusForImportance(imp){ const inner=2.0, outer=6.0; const t=clamp(1-clamp(imp,0,1),0,1); return lerp(inner,outer,t); }
+  function yForDate(d,minD,maxD){ const t=(d-minD)/Math.max(1,(maxD-minD)); return lerp(-2.0,2.0,clamp(t,0,1)); }
+
+  // 音声読み上げ
+  let utter=null;
+  function speak(text){
+    stopSpeak();
+    if(!('speechSynthesis' in window)){ alert('このブラウザは音声読み上げに対応していません。'); return; }
+    utter = new SpeechSynthesisUtterance(text);
+    const loadAndSpeak=()=>{ const vs=window.speechSynthesis.getVoices(); const ja=vs.find(v=>/ja|日本語/i.test(v.lang)); if(ja) utter.voice=ja; utter.rate=1; utter.pitch=1; utter.volume=1; window.speechSynthesis.speak(utter); };
+    if(window.speechSynthesis.getVoices().length===0){ window.speechSynthesis.onvoiceschanged=loadAndSpeak; } else { loadAndSpeak(); }
+  }
+  function stopSpeak(){ if(window.speechSynthesis && window.speechSynthesis.speaking){ window.speechSynthesis.cancel(); } utter=null; }
+
+  // UI
+  const panel=$('#panel'), panelTitle=$('#panelTitle'), panelBody=$('#panelBody');
+  const btnClose=$('#btnClose'), btnSpeak=$('#btnSpeak'), btnStopSpeak=$('#btnStopSpeak');
+  const intro=$('#intro'), btnStart=$('#btnStart'), btnCalm=$('#btnCalm'), btnHelp=$('#btnHelp');
+  const help=$('#help'), btnCloseHelp=$('#btnCloseHelp');
+
+  btnClose.onclick=()=>{ panel.classList.add('hidden'); stopSpeak(); };
+  btnSpeak.onclick =()=>{ const t=panelBody?.dataset?.narrative || panelBody.textContent; if(t) speak(t); };
+  btnStopSpeak.onclick=stopSpeak;
+  btnStart.onclick =()=> intro.classList.add('hidden');
+  btnCalm.onclick  =()=>{ document.body.classList.toggle('calm'); const mandala=document.getElementById('mandala'); const anim=mandala?.getAttribute('animation__spin'); if(anim){ const cur=anim.dur||60000; const next=(cur<=60050)?120000:60000; mandala.setAttribute('animation__spin',`property: rotation; to: 0 360 0; loop: true; dur: ${next}; easing: linear`);} };
+  btnHelp.onclick  =()=> help.classList.remove('hidden');
+  btnCloseHelp.onclick=()=> help.classList.add('hidden');
+  window.addEventListener('keydown',e=>{ if(e.key==='Escape'){ panel.classList.add('hidden'); help.classList.add('hidden'); stopSpeak(); } });
+
+  function openMemoryPanel(mem){
+    panelTitle.textContent = mem.title || '記憶';
+    const date = mem.date ? new Date(mem.date) : null;
+    const dateStr = date ? `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}` : '';
+    panelBody.innerHTML = `
+      <div class="meta">${dateStr} ／ テーマ: ${mem.theme ?? '—'} ／ 感情: ${mem.sentiment ?? '—'} ／ 重要度: ${mem.importance ?? '—'}</div>
+      <p>${(mem.narrative || '').replace(/\n/g,'<br>')}</p>
+    `;
+    panelBody.dataset.narrative = mem.narrative || '';
+    panel.classList.remove('hidden');
+  }
+
+  function build(memories){
+    const mandala=document.getElementById('mandala');
+    const dates = memories.map(m=> new Date(m.date).getTime()).filter(n=>!Number.isNaN(n));
+    const minD=Math.min(...dates), maxD=Math.max(...dates);
+
+    memories.forEach((mem,idx)=>{
+      const theta=(idx/memories.length)*Math.PI*2;
+      const r=radiusForImportance(mem.importance ?? 0.5);
+      const y=(Number.isFinite(minD)&&Number.isFinite(maxD)) ? yForDate(new Date(mem.date).getTime(),minD,maxD) : 0;
+      const x=Math.cos(theta)*r, z=Math.sin(theta)*r;
+      const color=colorForSentiment(mem.sentiment ?? 0);
+
+      const node=document.createElement('a-entity');
+      node.setAttribute('class','memory-node');
+      node.setAttribute('geometry','primitive: sphere; radius: 0.28');
+      node.setAttribute('material',`color:${color}; metalness:0.05; roughness:0.7; emissive:${color}; emissiveIntensity:0.12`);
+      node.setAttribute('position',`${x.toFixed(3)} ${y.toFixed(3)} ${z.toFixed(3)}`);
+      node.setAttribute('animation__float','property: position; dir: alternate; loop: true; dur: 4000; to: '+
+        `${(x*1.0).toFixed(3)} ${(y+0.12).toFixed(3)} ${(z*1.0).toFixed(3)}`);
+
+      const halo=document.createElement('a-entity');
+      halo.setAttribute('geometry','primitive: torus; radius: 0.36; radiusTubular: 0.01');
+      halo.setAttribute('material',`color:${color}; metalness:0.2; roughness:0.4; opacity:0.65; transparent:true`);
+      halo.setAttribute('rotation','90 0 0');
+      node.appendChild(halo);
+
+      node.addEventListener('click',e=>{ e.stopPropagation(); openMemoryPanel(mem); });
+      mandala.appendChild(node);
+    });
+
+    document.getElementById('selfCore').addEventListener('click', ()=>{
+      const themeCount = memories.reduce((acc,m)=>{ const t=m.theme||'—'; acc[t]=(acc[t]||0)+1; return acc; },{});
+      const items = Object.entries(themeCount).map(([k,v])=>`<li>${k}: ${v}</li>`).join('');
+      panelTitle.textContent='統合の瞬き';
+      panelBody.innerHTML = `
+        <p>曼荼羅の中心に立つと、断片はゆるやかにひとつの輪郭を形づくる。</p>
+        <p class="meta">テーマの分布：</p>
+        <ul>${items}</ul>
+        <p>吸って、吐いて。いま、ここに戻る。</p>
+      `;
+      panelBody.dataset.narrative='曼荼羅の中心に立つと、断片はゆるやかにひとつの輪郭を形づくる。吸って、吐いて。いま、ここに戻る。';
+      panel.classList.remove('hidden');
+    });
+  }
+
+  // エントリポイント
+  build(DEMO_MEMORIES);
+  </script>
+</body>
+</html>
